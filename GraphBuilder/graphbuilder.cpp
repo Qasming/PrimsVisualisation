@@ -130,7 +130,12 @@ void GraphBuilder::printGraphTable(qint32 count)
 {
     for(int i = 0; i < count; i++){
         for(int j = 0; j < count; j++){
-            qDebug() << m_graphTable[i][j] << ' ';
+           // qDebug() << m_graphTable[i][j] << ' ';
+            Arc *arc = m_graph->getArc(m_graph->listNode()[i],m_graph->listNode()[j]);
+            if(arc != nullptr)
+                qDebug() << arc->weight();
+            else
+                qDebug() << 0;
         }
         qDebug() << endl;
     }

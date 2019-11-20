@@ -67,6 +67,7 @@ public:
 	//! Лист дуг.
 	QList<Arc *> listArc();
 
+    Arc* getArc(Node *node1, Node *node2);
 private:
 	GraphScene *m_scene;
 

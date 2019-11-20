@@ -63,7 +63,7 @@ void Arc::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidg
 	QGraphicsLineItem::paint(painter, option, widget);
 
 	if (m_weight != -1) {
-		painter->setPen(QPen(QColor(0, 0, 0), m_widthLineWeight));
+        painter->setPen(QPen(m_color, m_widthLineWeight));
 		painter->setBrush(QColor(255, 255, 255));
 		painter->drawRect(m_rectForWeight);
 
@@ -98,5 +98,10 @@ qint32 Arc::weight() const
 void Arc::setWeight(const qint32 &weight)
 {
 	m_weight = weight;
-	refreshRectForWeight();
+    refreshRectForWeight();
+}
+
+void Arc::setColor(const QColor color)
+{
+    m_color = color;
 }

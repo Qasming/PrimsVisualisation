@@ -206,7 +206,12 @@ QList<Node *> Graph::listNode()
 
 QList<Arc *> Graph::listArc()
 {
-	return m_scene->listArcs();
+    return m_scene->listArcs();
+}
+
+Arc *Graph::getArc(Node *node1, Node *node2)
+{
+    return m_scene->getArc(node1,node2);
 }
 
 bool Graph::resizeItems(QSize size)

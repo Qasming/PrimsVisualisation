@@ -33,7 +33,7 @@ public:
 
 	qint32 weight() const;
 	void setWeight(const qint32 &weight);
-
+     void setColor(const QColor color);
 private:
 	Node		 *m_node1;
 	Node		 *m_node2;
@@ -44,6 +44,7 @@ private:
 	QRectF		  m_rectForWeight;
 
 	QPointF m_center;
+     QColor m_color{QColor(0,0,0)};
 };
 
 #endif
