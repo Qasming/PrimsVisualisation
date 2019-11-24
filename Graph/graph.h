@@ -34,7 +34,8 @@ public:
 	bool setWeight(qint32 indexNode_1, qint32 indexNode_2, qint32 weight);
 	//! Удаляет дугу между двумя узлами с переданной индексацией узлов.
 	bool removeArc(qint32 indexNode_1, qint32 indexNode_2);
-
+    //!Обновляет сцену
+    void update();
 	//! Очищает всю сцену.
 	void clearAll();
 

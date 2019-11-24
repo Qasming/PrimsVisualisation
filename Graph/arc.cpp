@@ -25,7 +25,7 @@ Arc::Arc(Node *node1,
 
 Arc::~Arc()
 {
-
+    QGraphicsItem::update();
 }
 
 Node *Arc::node1() const
@@ -54,24 +54,23 @@ void Arc::setLine(QLineF line)
 	m_center = rect.center();
 	// Перемещаем вес в новый центр.
 	refreshRectForWeight();
-	QGraphicsLineItem::setLine(line);
+    QGraphicsLineItem::setLine(line);
 }
 
 void Arc::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
 	painter->setRenderHint(QPainter::Antialiasing);
-	QGraphicsLineItem::paint(painter, option, widget);
+    QGraphicsLineItem::setPen(QPen(m_color, m_widthLineWeight));
+    QGraphicsLineItem::paint(painter, option, widget);
 
-	if (m_weight != -1) {
-        painter->setPen(QPen(m_color, m_widthLineWeight));
-		painter->setBrush(QColor(255, 255, 255));
-		painter->drawRect(m_rectForWeight);
+    painter->setPen(QPen(m_color, m_widthLineWeight));
+    painter->setBrush(QColor(255, 255, 255));
+    painter->drawRect(m_rectForWeight);
 
-		painter->setFont(m_fontWeight);
-		painter->drawText(m_rectForWeight,
-						  Qt::AlignCenter | Qt::AlignHCenter,
-						  QString::number(m_weight));
-	}
+    painter->setFont(m_fontWeight);
+    painter->drawText(m_rectForWeight,
+                      Qt::AlignCenter | Qt::AlignHCenter,
+                      QString::number(m_weight));
 }
 
 QPointF Arc::center() const

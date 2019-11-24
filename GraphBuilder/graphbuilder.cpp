@@ -4,6 +4,10 @@
 #include "./Graph/node.h"
 
 #include <QDebug>
+#include <QThread>
+#include <QVector>
+
+
 
 GraphBuilder::GraphBuilder(Graph &graph,QObject *parent)
     : QObject(parent)
@@ -19,10 +23,15 @@ void GraphBuilder::buildGraph(qint32 countNode, qint32 graphComplexity)
 
 void GraphBuilder::buildMCStree()
 {
-    _init_graphTable(m_graph->listNode().length());
-    fillGraphTable();
-    printGraphTable(m_graph->listNode().length());
-    clearGraphTable(m_graph->listNode().length());
+    //_init_graphTable(m_graph->listNode().length());
+    //fillGraphTable();
+
+    drawMCStree();
+
+    //QThread thread;
+    //thread.create();
+    //printGraphTable(m_graph->listNode().length());
+    //clearGraphTable(m_graph->listNode().length());
 }
 
 void GraphBuilder::start(){
@@ -116,6 +125,159 @@ void GraphBuilder::fillGraphTable()
 void GraphBuilder::drawMCStree()
 {
 
+    QList<Node*> _nodes = m_graph->listNode();
+    QList<Arc*> _arcs = m_graph->listArc();
+
+    qint32 **graphMatrix = new qint32*[_nodes.length()];
+    for(qint32 i = 0; i < _nodes.length(); i++){
+        graphMatrix[i] = new qint32[_nodes.length()];
+        for(qint32 j = 0; j < _nodes.length(); j++){
+            graphMatrix[i][j] = 0;
+        }
+    }
+
+    foreach (Node* node, _nodes) {
+        QList<Arc*> nodeArcs  = node->listArc();
+        foreach(Arc* arc, nodeArcs){
+            if(node != arc->node1()){
+                qint32 indexOfNode1 = _nodes.indexOf(node);
+                qint32 indexOfNode2 = _nodes.indexOf(arc->node1());
+
+                graphMatrix[indexOfNode1][indexOfNode2] = arc->weight();
+                graphMatrix[indexOfNode2][indexOfNode1] = arc->weight();
+            }
+            else if(node != arc->node2()){
+                qint32 indexOfNode1 = _nodes.indexOf(node);
+                qint32 indexOfNode2 = _nodes.indexOf(arc->node2());
+
+                graphMatrix[indexOfNode1][indexOfNode2] = arc->weight();
+                graphMatrix[indexOfNode2][indexOfNode1] = arc->weight();
+            }
+        }
+    }
+
+    QVector<Node*> nodes;
+    QVector<Arc*>  arcs;
+
+    m_state = State::Build;
+
+    foreach(Node* node, m_graph->listNode()){
+        nodes.push_back(node);
+    }
+    foreach(Arc* arc, m_graph->listArc()){
+        arcs.push_back(arc);
+    }
+
+    bool* nodesInTree = new bool[m_graph->listNode().length()];
+    for(int i = 0; i < m_graph->listNode().length(); i++){
+        if(i == 0)
+            nodesInTree[i] = true;
+        else
+            nodesInTree[i] = false;
+    }
+
+    //удаляем все ребра
+    foreach(Arc *arc, arcs){
+        arc->setColor(m_inactiveColor);
+    }
+
+    //Инициализируем переменные, нужные для постройки дерева
+    bool   complited = false;
+
+    QList<Node*> _nodesInTree;
+    _nodesInTree.append(nodes[0]);
+    QList<Arc*>  arcInTree;
+
+    Arc* arcOnStep = nullptr;
+    Node* nodeOnStep = nullptr;
+
+    qint32 indexNode1 = 0;
+    qint32 indexNode2 = 0;
+    Arc* minArc = nullptr;
+
+    qint32 count = 1;
+
+    while(complited == false){
+        if(m_state == State::Build){ //Строим деревe
+            if(indexNode1 < _nodesInTree.size()){
+                nodeOnStep = _nodesInTree[indexNode1];
+                if(indexNode2 < nodes.size()){
+                    if(graphMatrix[indexNode1][indexNode2] > 0)
+                    {
+                        if(minArc == nullptr) {
+                            if(!nodesInTree[indexNode1] || !nodesInTree[indexNode2]){
+                                minArc = m_graph->getArc(nodes[indexNode1],nodes[indexNode2]);
+                                arcOnStep = minArc;
+                            }
+                        }
+                        else {
+                            arcOnStep = m_graph->getArc(nodes[indexNode1],nodes[indexNode2]);
+                            if(minArc->weight() > graphMatrix[indexNode1][indexNode2]){
+                                qDebug() << "Index1 " << nodesInTree[indexNode1];
+                                qDebug() << "Index2 " << nodesInTree[indexNode2];
+                            if((nodesInTree[indexNode1] && !nodesInTree[indexNode2]) ||
+                               (!nodesInTree[indexNode1] && nodesInTree[indexNode2])){
+                                minArc = m_graph->getArc(nodes[indexNode1],nodes[indexNode2]);
+                            }
+                        }
+                        }
+                    }
+                    indexNode2++;
+                }
+                else{
+                    ++indexNode1;
+                    indexNode2 = 0;
+                }
+            } else if(minArc != nullptr){
+                minArc->setColor(m_MCSTreeColor);
+                Node *node1 = minArc->node1();
+                Node *node2 = minArc->node2();
+                qint32 index1 = nodes.indexOf(node1);
+                qint32 index2 = nodes.indexOf(node2);
+                arcInTree.append(minArc);
+                if(!nodesInTree[index1]){
+                    nodesInTree[index1] = true;
+                   _nodesInTree.append(node1);
+                   count++;
+                }
+                if(!nodesInTree[index2]){
+                    nodesInTree[index2] = true;
+                    _nodesInTree.append(node2);
+                    count++;
+                }
+                minArc = nullptr;
+                indexNode1 = 0;
+                indexNode2 = 0;
+            }
+
+            if(count == nodes.length())
+                complited = true;
+
+            updateMCStree(m_graph,_nodesInTree,arcInTree,nodeOnStep,arcOnStep, minArc);
+        }
+        else if(m_state == State::Pause){ //Пропускаем итерацию
+            continue;
+        }
+        else if(m_state == State::Reset){ //Сбрасываем
+            foreach(Arc *arc,m_graph->listArc()){
+                arc->setColor(m_defaultColor);
+            }
+            foreach(Node *node, m_graph->listNode()){
+                node->setColor(m_defaultColor);
+            }
+            delete[] nodesInTree;
+            break;
+        }
+        QThread::msleep(100);
+
+    }
+
+    for(int i = 0; i < count; i++){
+        delete [] graphMatrix[i];
+    }
+    delete [] graphMatrix;
+    updateMCStree(m_graph,_nodesInTree,arcInTree,nullptr,nullptr, nullptr);
+    emit buildingCompleted();
 }
 
 void GraphBuilder::clearGraphTable(qint32 count)
@@ -124,6 +286,42 @@ void GraphBuilder::clearGraphTable(qint32 count)
         delete [] m_graphTable[i];
     }
     delete [] m_graphTable;
+}
+
+void GraphBuilder::updateMCStree(Graph *graph,
+                                 QList<Node *> nodesInTree,
+                                 QList<Arc *> arcsInTree,
+                                 Node* nodeOnStep,
+                                 Arc *arcOnStep,
+                                 Arc *minArc)
+{
+    QList<Node*> nodes = graph->listNode();
+    QList<Arc*>  arcs  = graph->listArc();
+
+    foreach(Node* item, nodes){
+        item->setColor(QColor(0,0,0,255));
+    }
+    foreach(Arc* item, arcs){
+        item->setColor(QColor(196, 196, 196));
+    }
+
+    if(minArc != nullptr) minArc->setColor(QColor(0, 227, 68,255));
+
+    if(arcsInTree.size() > 0){
+        foreach(Arc* item, arcsInTree){
+            item->setColor(QColor(52, 119, 235,255));
+        }
+    }
+
+    if(nodesInTree.size() > 0){
+        foreach(Node* item, nodesInTree){
+            item->setColor(QColor(52, 119, 235,255));
+        }
+    }
+
+    if(arcOnStep != nullptr) arcOnStep->setColor(QColor(255, 56, 38,255));
+    if(nodeOnStep != nullptr)nodeOnStep->setColor(QColor(245, 236, 66 ,255));
+    graph->update();
 }
 
 void GraphBuilder::printGraphTable(qint32 count)

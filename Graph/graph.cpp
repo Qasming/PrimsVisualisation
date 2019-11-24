@@ -45,13 +45,16 @@ bool Graph::removeNode(qint32 indexNode)
 	if (indexNode > listNode().size()) {
 		m_strError = "Переданный узел не существует! "
 					 "[indexNode > listItems.size; method: removeNode]";
+        update();
 		return false;
 	}
 	if (m_scene->removeNode(getItemOnIndex(indexNode))) {
+        update();
 		return true;
 	}
 	else {
 		m_strError = "Был передан неизвестный указатель! [method: removeNode]";
+        update();
 		return false;
 	}
 }
@@ -176,7 +179,12 @@ bool Graph::removeArc(qint32 indexNode_1, qint32 indexNode_2)
 	else {
 		m_strError = "Между узлами связь не найдена! [method: removeArc]";
 		return false;
-	}
+    }
+}
+
+void Graph::update()
+{
+    m_scene->update();
 }
 
 void Graph::clearAll()

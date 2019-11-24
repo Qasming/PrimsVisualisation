@@ -78,10 +78,16 @@ bool GraphScene::removeNode(Node *node)
 		delete arc;
 	}
 	QGraphicsScene::removeItem(node);
+
+////////////////////////////////////////////////////////////////////
+    //Сохраняем индекс удаляемого элемента
+    int index = m_listNodes.indexOf(node);
+    //Удаляем элемент из списка
 	m_listNodes.removeOne(node);
 
-    for (int i = node->index() - 1; i < m_listNodes.size(); i++) {
-        m_listNodes[i]->atIndex()--;
+    //Меняем индексы у вершин
+    for (; index < m_listNodes.size(); index++) {
+        m_listNodes[index]->atIndex()--;
     }
 
 	if (!m_listNodes.isEmpty()) {
@@ -92,7 +98,7 @@ bool GraphScene::removeNode(Node *node)
 			node->update();
 		}
 	}
-
+    //освобождаем память
 	delete node;
 
 	return true;
@@ -177,17 +183,9 @@ bool GraphScene::addArc(Node *node1, Node *node2, qint32 weight)
     if (!node1 || !node2)
         return false;
 
+    //Если объекты соеденены дугой, то выходим их функции
     if(getArc(node1,node2) != nullptr)
         return false;
-//	// Проверка на "существует ли линия между этими узлами".
-//	foreach (Arc *arc, node1->listArc()) {
-//		if ((arc->node1() == node1 && arc->node2() == node2) ||
-//				(arc->node1() == node2 && arc->node2() == node1)) {
-//            if(arc->weight() != weight)
-
-//			return false;
-//		}
-//	}
 
 	Node *newNode_1 = new Node(*node1);
 	Node *newNode_2 = new Node(*node2);
@@ -244,17 +242,6 @@ bool GraphScene::setArcWeight(Arc* arc, qint32 weight){
 
 bool GraphScene::removeArc(Node *node1, Node *node2)
 {
-//    foreach (Arc *arc, node1->listArc()) {
-//        if ((arc->node1() == node1 && arc->node2() == node2) ||
-//                (arc->node1() == node2 && arc->node2() == node1)) {
-//            node1->removeArc(arc);
-//            node2->removeArc(arc);
-//            QGraphicsScene::removeItem(arc);
-//            m_listArcs.removeOne(arc);
-//            delete arc;
-//            return true;
-//        }
-//    }
     Arc* arc = getArc(node1,node2);
     if(arc != nullptr){
         node1->removeArc(arc);
@@ -262,6 +249,7 @@ bool GraphScene::removeArc(Node *node1, Node *node2)
         QGraphicsScene::removeItem(arc);
         m_listArcs.removeOne(arc);
         delete arc;
+        update();
         return true;
     }
 	return false;

@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QThread>
 
 #include "Graph/graph.h"
 #include "GraphBuilder/graphbuilder.h"
@@ -39,10 +40,14 @@ private slots:
     void reset();
     void generateGraph();
 
+signals:
+    void _start();
 private:
     Ui::MainWindow *ui;
 
     Graph m_graph;
     GraphBuilder *m_graphBulider;
+
+    QThread *graphBuilderThread;
 };
 #endif // MAINWINDOW_H

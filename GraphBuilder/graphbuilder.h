@@ -48,8 +48,15 @@ private:
     void drawGraph();
     //!Отрисовка дерева
     void drawMCStree();
-
+    //!Отчищает таблицу связей
     void clearGraphTable(qint32 count);
+
+    //!Обновляем дерево
+    static void updateMCStree(Graph *graph,
+                              QList<Node*>nodesInTree,
+                              QList<Arc*> arcsInTree,
+                              Node* nodeOnStep,
+                              Arc *arcOnStep, Arc *minArc);
 
 //!Тестировочные функции
 private:
@@ -77,7 +84,7 @@ private: //!Цвета
     //!Цвет неактивных элементов
     QColor m_inactiveColor{QColor(196, 196, 196)};
     //!Цвет остового дерева
-    QColor m_primsMinimumComstSpannigTreeColor{QColor(0,0,0,255)};
+    QColor m_MCSTreeColor{QColor(52, 119, 235,255)};
     //!Цвет по умолчанию
     QColor m_defaultColor{QColor(0,0,0,255)};
 
