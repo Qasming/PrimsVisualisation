@@ -36,6 +36,7 @@ private slots:
     void setSpeed(qint32);
 
     void start();
+    void play();
     void pause();
     void reset();
     void generateGraph();

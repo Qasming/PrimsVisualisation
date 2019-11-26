@@ -66,6 +66,20 @@
      </widget>
     </item>
     <item>
+     <widget class="QPushButton" name="play">
+      <property name="text">
+       <string>Play</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pause">
+      <property name="text">
+       <string>Pause</string>
+      </property>
+     </widget>
+    </item>
+    <item>
      <widget class="QWidget" name="w_widget" native="true">
       <layout class="QHBoxLayout" name="horizontalLayout">
        <property name="spacing">

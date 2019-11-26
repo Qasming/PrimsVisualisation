@@ -26,13 +26,14 @@ public:
 public:
     void buildGraph(qint32 countNode, qint32 graphComplexity);
     void buildMCStree();
-
+    State getSate();
 signals:
     void buildingCompleted();
     void buildingBegun();
 
 public slots:
     void start();
+    void play();
     void pause();
     void reset();
     void setSpeed(qint32 speed);
@@ -50,7 +51,6 @@ private:
     void drawMCStree();
     //!Отчищает таблицу связей
     void clearGraphTable(qint32 count);
-
     //!Обновляем дерево
     static void updateMCStree(Graph *graph,
                               QList<Node*>nodesInTree,
@@ -58,6 +58,8 @@ private:
                               Node* nodeOnStep,
                               Arc *arcOnStep, Arc *minArc);
 
+    static void drawMCSTree(GraphBuilder *graphBuilder,
+                            Graph *graph);
 //!Тестировочные функции
 private:
     void printGraphTable(qint32 count);
@@ -70,11 +72,14 @@ private:
     qint32 m_speed{1};
     //!Таблица связей
     qint32** m_graphTable;
+
+    QThread *theard;
 private:
     //!Ширина
     qint32 m_nodeWidth{45};
     qint32 m_nodeBorderWidth{5};
     qint32 m_arcWidth{5};
+
 
 private: //!Цвета
     //!Цвет вершины на шаге

@@ -9,10 +9,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->w_widget->layout()->addWidget(&m_graph);
     m_graphBulider = new GraphBuilder(m_graph);
-    graphBuilderThread = new QThread;
-    m_graphBulider->moveToThread(graphBuilderThread);
-    graphBuilderThread->start();
 
+    QObject::connect(ui->play,SIGNAL(clicked()),m_graphBulider,SLOT(play()));
+    QObject::connect(ui->pause,SIGNAL(clicked()),m_graphBulider,SLOT(pause()));
     QObject::connect(this,SIGNAL(destroyed()),graphBuilderThread, SLOT(quit()));
     QObject::connect(this,SIGNAL(_start()),m_graphBulider,SLOT(start()));
     QObject::connect(ui->pushButton_2,SIGNAL(clicked()),this,SLOT(setState_AddNodes()));
@@ -71,6 +70,11 @@ void MainWindow::setSpeed(qint32 speed)
 void MainWindow::start()
 {
     emit _start();
+}
+
+void MainWindow::play()
+{
+    m_graphBulider->play();
 }
 
 void MainWindow::pause()
