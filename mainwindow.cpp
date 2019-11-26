@@ -7,19 +7,18 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    m_graphBulider = new GraphBuilder(m_graph,this);
     ui->w_widget->layout()->addWidget(&m_graph);
     m_graphBulider = new GraphBuilder(m_graph);
 
     QObject::connect(ui->play,SIGNAL(clicked()),m_graphBulider,SLOT(play()));
     QObject::connect(ui->pause,SIGNAL(clicked()),m_graphBulider,SLOT(pause()));
-    QObject::connect(this,SIGNAL(destroyed()),graphBuilderThread, SLOT(quit()));
     QObject::connect(this,SIGNAL(_start()),m_graphBulider,SLOT(start()));
     QObject::connect(ui->pushButton_2,SIGNAL(clicked()),this,SLOT(setState_AddNodes()));
     QObject::connect(ui->pushButton_3,SIGNAL(clicked()),this,SLOT(start()));
     QObject::connect(ui->pushButton,SIGNAL(clicked()),this,SLOT(setState_AddArcs()));
     QObject::connect(ui->pushButton_4,SIGNAL(clicked()),this,SLOT(setState_MoveItems()));
     QObject::connect(ui->pushButton_5,SIGNAL(clicked()),this,SLOT(setState_RemoveItems()));
-
 }
 
 MainWindow::~MainWindow()
@@ -69,7 +68,7 @@ void MainWindow::setSpeed(qint32 speed)
 
 void MainWindow::start()
 {
-    emit _start();
+    m_graphBulider->start();
 }
 
 void MainWindow::play()
@@ -91,5 +90,4 @@ void MainWindow::generateGraph()
 {
     //m_graphBulider->buildGraph()
 }
-
 

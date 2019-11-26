@@ -5,15 +5,11 @@
 
 #include <QDebug>
 #include <QThread>
-#include <QVector>
-
-
 
 GraphBuilder::GraphBuilder(Graph &graph,QObject *parent)
     : QObject(parent)
 {
     m_graph = &graph;
-    theard = QThread::create(drawMCSTree,this,m_graph);
 
 }
 
@@ -25,18 +21,16 @@ void GraphBuilder::buildGraph(qint32 countNode, qint32 graphComplexity)
 
 void GraphBuilder::buildMCStree()
 {
-    //_init_graphTable(m_graph->listNode().length());
-    //fillGraphTable();
-
-    //theard->exit();
-    theard->start();
-    //drawMCStree();
 
 }
 
 GraphBuilder::State GraphBuilder::getSate()
 {
     return m_state;
+    _init_graphTable(m_graph->listNode().length());
+    fillGraphTable();
+    printGraphTable(m_graph->listNode().length());
+    clearGraphTable(m_graph->listNode().length());
 }
 
 void GraphBuilder::start(){
@@ -136,7 +130,6 @@ void GraphBuilder::fillGraphTable()
 
 void GraphBuilder::drawMCStree()
 {
-    theard->start();
 //    QList<Node*> _nodes = m_graph->listNode();
 //    QList<Arc*> _arcs = m_graph->listArc();
 
@@ -503,6 +496,7 @@ void GraphBuilder::drawMCSTree(GraphBuilder *graphBuilder,
     updateMCStree(graph,_nodesInTree,arcInTree,nullptr,nullptr, nullptr);
     //emit buildingCompleted();
 }
+
 
 void GraphBuilder::printGraphTable(qint32 count)
 {
