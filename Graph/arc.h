@@ -12,17 +12,26 @@ public:
 		Node		 *node2,
 		qint32		  widthLine,
 		const QFont	 &fontWeight,
-		const qint32 &widthLineWeight,
+        const qint32 &borderWidthWeight,
 		qint32		  weight = -1);
 	~Arc() Q_DECL_OVERRIDE;
 
+    //!Вершина 1
 	Node *node1() const;
+    //!Вершина 2
 	Node *node2() const;
+    //!Устанавливает вершину 1
 	void setNode1(Node *node);
+    //!Устанавливает вершину 2
 	void setNode2(Node *node);
+    //!Возвращает вес ребра
+    qint32 weight() const;
+    //!Устанавливает вес ребра
+    void setWeight(const qint32 &weight);
 
+    //!Устанавливает линию
 	void setLine(QLineF line);
-
+    //!Отрисовка
 	void paint(QPainter *painter,
 			   const QStyleOptionGraphicsItem *option,
 			   QWidget *widget) Q_DECL_OVERRIDE;
@@ -30,21 +39,29 @@ public:
 	QPointF center() const;
 
 	void refreshRectForWeight();
-
-	qint32 weight() const;
-	void setWeight(const qint32 &weight);
-     void setColor(const QColor color);
+     void setColor(const QColor &color);
+     void setBrushWeight(const QColor &color);
 private:
-	Node		 *m_node1;
-	Node		 *m_node2;
+    //! Первая вершина
+    Node    *m_node1;
+    //!Вторая вершина
+    Node	*m_node2;
 
+    //!Шриф веса
 	const QFont	 &m_fontWeight;
-	const qint32 &m_widthLineWeight;
-	qint32		  m_weight;
+    //!Ширина стенки у рамки
+    const qint32 &m_borderWidthWeight;
+    //!Рамка веса
 	QRectF		  m_rectForWeight;
+    //!Центр ребра
+    QPointF m_center;
+    //!Цвет ребра
+    QColor m_color{QColor(0,0,0)};
+    //!Заливка рамки
+    QColor m_weightBrush{QColor(255,255,255,255)};
 
-	QPointF m_center;
-     QColor m_color{QColor(0,0,0)};
+    //!Вес ребра
+    qint32		  m_weight;
 };
 
 #endif

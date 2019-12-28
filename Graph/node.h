@@ -8,11 +8,11 @@ class Arc;
 class Node : public QGraphicsItem
 {
 public:
-	Node(const QSize  &sizeNode,
-		 const qint32 &widthLine,
+    Node(const QSize  &sizeNode,
+         const qint32 &borderWidht,
 		 QFont		  &fontNode,
 		 qint32		   indexNode = -1);
-	Node(const Node &node);
+    Node(const Node &node);
 	~Node() override;
 
 	QRectF boundingRect() const Q_DECL_OVERRIDE;
@@ -23,28 +23,37 @@ public:
 	qint32 index() const;
 	qint32 &atIndex();
 
+    //!Список инцидентных ребер
 	QList<Arc *> listArc() const;
-	void setArcs(QList<Arc *> listArcs);
+    //!Добавить инцидентное
 	void addArc(Arc *arc);
-	void removeArc(Arc *arc);
+    //!Удаляет инцидентное
+	void removeArc(Arc *arc);   
+    //!Возвращает смежную вершину
+    Node* adjacentNode(Arc* arc);
 
-	QColor currentColor() const;
-	void setColor(QColor newColor);
-
-	// Устанавливает нужный размер шрифта под размер узла.
+    //!Цвет вершины
+    QColor currentColor() const;
+    //!Установить цвет вершины
+    void setColor(QColor newColor);
+    //!Устанавливает нужный размер шрифта под размер узла.
 	void refreshFont();
-
+    //!Центр вершины в координатах
 	QPointF center() const;
 
 private:
-	qint32		  m_index;
-
+    //!Список инцидентных ребер
 	QList<Arc *>  m_listArcs;
-
+    //!Индекс вершины (виден пользователю)
+    qint32		  m_index;
+    //!Размер вершины
 	const QSize  &m_sizeNode;
+    //!Шрифт индекса
 	QFont		 &m_font;
-	const qint32 &m_widthLine;
-	QColor		  m_color;
+    //!Ширина стенки
+    const qint32 &m_borderWidth;
+    //!Цвет вершины
+    QColor		  m_color{QColor(0,0,0)};
 };
 
 #endif

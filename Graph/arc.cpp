@@ -2,18 +2,17 @@
 #include "node.h"
 
 #include <QPainter>
-
 #include <QDebug>
 
 Arc::Arc(Node *node1,
 		 Node *node2,
 		 qint32 widthLine,
 		 const QFont &fontWeight,
-		 const qint32 &widthLineWeight,
+         const qint32 &borderWidthWeight,
 		 qint32 weight) :
 	QGraphicsLineItem(),
 	m_fontWeight(fontWeight),
-	m_widthLineWeight(widthLineWeight),
+    m_borderWidthWeight(borderWidthWeight),
 	m_weight(weight)
 {	
 	m_node1 = node1;
@@ -54,17 +53,20 @@ void Arc::setLine(QLineF line)
 	m_center = rect.center();
 	// Перемещаем вес в новый центр.
 	refreshRectForWeight();
-	QGraphicsLineItem::setLine(line);
+    QGraphicsLineItem::setLine(line);
 }
 
-void Arc::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+void Arc::paint(QPainter *painter,
+                const QStyleOptionGraphicsItem *option,
+                QWidget *widget)
 {
 	painter->setRenderHint(QPainter::Antialiasing);
 	QGraphicsLineItem::paint(painter, option, widget);
+    QGraphicsLineItem::setPen(QPen(QColor(m_color),3));
 
 	if (m_weight != -1) {
-        painter->setPen(QPen(m_color, m_widthLineWeight));
-		painter->setBrush(QColor(255, 255, 255));
+        painter->setPen(QPen(m_color, m_borderWidthWeight));
+        painter->setBrush(m_weightBrush);
 		painter->drawRect(m_rectForWeight);
 
 		painter->setFont(m_fontWeight);
@@ -101,7 +103,12 @@ void Arc::setWeight(const qint32 &weight)
     refreshRectForWeight();
 }
 
-void Arc::setColor(const QColor color)
+void Arc::setBrushWeight(const QColor &color)
+{
+    m_weightBrush = color;
+}
+
+void Arc::setColor(const QColor &color)
 {
     m_color = color;
 }

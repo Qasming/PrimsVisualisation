@@ -4,28 +4,29 @@
 #include <QPainter>
 
 Node::Node(const QSize &sizeNode,
-		   const qint32 &widthLine,
-		   QFont &fontNode,
-		   qint32 indexNode) :
+           const qint32 &borderWidht,
+           QFont &fontNode,
+           qint32 indexNode) :
+    QGraphicsItem(),
 	m_index(indexNode),
 	m_sizeNode(sizeNode),
 	m_font(fontNode),
-	m_widthLine(widthLine),
-	m_color(QColor(0, 0, 0))
+    m_borderWidth(borderWidht)
 {
 	refreshFont();
 }
 
-Node::Node(const Node &node) :
+Node::Node(const Node &node):
+    QGraphicsItem(),
 	m_index(node.m_index),
 	m_sizeNode(node.m_sizeNode),
 	m_font(node.m_font),
-	m_widthLine(node.m_widthLine),
+    m_borderWidth(node.m_borderWidth),
 	m_color(node.m_color)
 {
 	setPos(node.pos());
 
-	setArcs(node.listArc());
+    if (m_listArcs.isEmpty()) {m_listArcs = node.listArc();}
 	const Node * const pItem = &node;
 	foreach (Arc *line, m_listArcs) {
 		if (pItem == line->node1())
@@ -49,8 +50,8 @@ void Node::paint(QPainter *p, const QStyleOptionGraphicsItem *, QWidget *)
 {
 	p->setRenderHint(QPainter::Antialiasing);
 
-	p->setPen(QPen(m_color, m_widthLine));
-	p->setBrush(QBrush(QColor(255, 255, 255)));
+    p->setPen(QPen(m_color, m_borderWidth));
+    p->setBrush(QBrush(QColor(255, 255, 255)));
 
 	p->drawRoundRect(boundingRect(), 90, 90);
 
@@ -80,12 +81,6 @@ QList<Arc *> Node::listArc() const
 	return m_listArcs;
 }
 
-void Node::setArcs(QList<Arc *> listArc)
-{
-	if (m_listArcs.isEmpty())
-		m_listArcs = listArc;
-}
-
 void Node::addArc(Arc *arc)
 {
 	m_listArcs.append(arc);
@@ -103,7 +98,21 @@ QColor Node::currentColor() const
 
 void Node::setColor(QColor newColor)
 {
-	m_color = newColor;
+    m_color = newColor;
+}
+
+Node *Node::adjacentNode(Arc *arc)
+{
+    if(this == arc->node1() || this == arc->node2()){
+        //Если первая вершина не совпадает с текущей
+        //то возвращаем первую
+        if(arc->node1() != this){
+            return arc->node1();
+        }
+        //Иначе возвращаем вторую
+        else {return arc->node2();}
+    }
+    return nullptr;
 }
 
 void Node::refreshFont()

@@ -13,27 +13,25 @@ class Graph : public QGraphicsView
 
 public:
 	enum State { None,
-				 AddItem, RemoveItem, MoveItem,
-				 AddLine, RemoveLine, ChangeLineWeight };
+                 AddNode, RemoveNode, MoveNode,
+                 AddArc, RemoveArc, ChangeArcWeight };
 
 	Graph(QWidget *parent = nullptr);
 	~Graph() Q_DECL_OVERRIDE;
 
-	//! Возвратит индекс созданного узла.
-	qint32 addNode(QPoint pos);
-	//! Удалит узел по его индексу.
-	bool removeNode(qint32 indexNode);
+    bool addNode(QPoint pos);
+    //! Удалить узел
+    bool removeNode(Node* node);
 	//! Переместит узел на xBy и yBy позиций.
-	bool moveNode(qint32 indexNode, qint32 xBy, qint32 yBy);
-
+    bool moveNode(Node* node, qint32 xBy, qint32 yBy);
 	//! Устанавливает вес для последующих созданных дуг.
 	bool setWeight(qint32 weight);
-	//! Добавляет дугу между двумя узлами с переданной индексацией узлов.
-	bool addArc(qint32 indexNode_1, qint32 indexNode_2, qint32 weight = -1);
+
+    bool addArc(Node* node1, Node*node2,qint32 weight =-1);
 	//! Изменяет вес между двумя узлами.
-	bool setWeight(qint32 indexNode_1, qint32 indexNode_2, qint32 weight);
-	//! Удаляет дугу между двумя узлами с переданной индексацией узлов.
-	bool removeArc(qint32 indexNode_1, qint32 indexNode_2);
+    bool setWeight(Node* node1, Node*node2, qint32 weight);
+    //! Удаляет дугу между двумя узлами с переданной индексацией узлов.
+    bool removeArc(Node* node1, Node* node2);
 
 	//! Очищает всю сцену.
 	void clearAll();
@@ -54,42 +52,35 @@ public:
 	//! Возвращает возможность перемещения сцены на ПКМ.
 	bool sceneIsMovable() const;
 
-	//! Эта функция возвращает корректный указатель на элемент из листа,
-	//! т.е. если узел имеет индекс 2, то из листа вернется объект с индексом 1.
-	//! Потому что индексы узлов начинаются с 1, а у листа с 0.
-	Node *getItemOnIndex(qint32 indexItem);
-
-	//! Возвращает текст ошибки, если один из методов с типом bool вернет false.
-	const QString &error() const;
-
 	//! Лист узлов.
 	QList<Node *> listNode();
 	//! Лист дуг.
 	QList<Arc *> listArc();
 
+    //! Возвращает дугу между вершинами
     Arc* getArc(Node *node1, Node *node2);
+
+    void update();
 private:
 	GraphScene *m_scene;
 
-	QPoint m_oldPos;
+    QPoint m_oldPos{QPoint(0, 0)};
 
-	QCursor m_standardCursor;
-	QCursor m_movableCursor;
+    QCursor m_standardCursor{Qt::PointingHandCursor};
+    QCursor m_movableCursor{Qt::SizeAllCursor};
 
-	Node *m_clickedItem;
-	Node *m_pressedItem;
+    Node *m_clickedItem{nullptr};
+    Node *m_pressedItem{nullptr};
 
-	bool m_sceneIsMove;
-	bool m_sceneIsMovable;
+    bool m_sceneIsMove{false};
+    bool m_sceneIsMovable{true};
 
-	bool m_itemIsMove;
+    bool m_itemIsMove{false};
 
-	qint32 m_weightForNextLine;
-	qint32 m_weightLine;
+    qint32 m_weightForNextLine{-1};
+    qint32 m_weightLine{State::None};
 
 	State m_currentState;
-
-	QString m_strError;
 
 protected:
 	void mousePressEvent(QMouseEvent *event) Q_DECL_OVERRIDE;
@@ -98,6 +89,6 @@ protected:
 	void resizeEvent(QResizeEvent *event) Q_DECL_OVERRIDE;
 
 public slots:
-	void changeState(State st);
+    void setState(State st);
 };
 #endif

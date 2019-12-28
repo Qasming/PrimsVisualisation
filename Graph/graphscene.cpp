@@ -6,13 +6,7 @@
 #include <QDebug>
 
 GraphScene::GraphScene(QObject *parent) :
-	QGraphicsScene(parent),
-	m_sizeNodes(QSize(40, 40)),
-	m_widthLineNodes(2),
-	m_widthLineWeightArcs(2),
-	m_widthLineArcs(2),
-	m_fontWeightArcs(QFont("Arial", 8, QFont::Normal)),
-	m_fontNodes(QFont("Arial", 0, QFont::Normal))
+    QGraphicsScene(parent)
 {
 
 }
@@ -29,6 +23,7 @@ void GraphScene::removeAll()
 	foreach (Node *node, m_listNodes) {
 		removeNode(node);
 	}
+    update();
 }
 
 QList<Node *> GraphScene::listNodes()
@@ -42,27 +37,26 @@ QList<Arc *> GraphScene::listArcs()
 }
 
 
-
 // ******************** NODES ********************
-qint32 GraphScene::addNode(QPoint point)
+bool GraphScene::addNode(QPoint point)
 {
-	point.setX(point.x() - m_sizeNodes.width() / 2 /* i don't know why 4 */);
-	point.setY(point.y() - m_sizeNodes.height() / 2 /* i don't know why 4 */);
+    point.setX(point.x() - m_sizeNodes.width() / 2);
+    point.setY(point.y() - m_sizeNodes.height() / 2);
 
-	Node *node = new Node(m_sizeNodes, m_widthLineNodes, m_fontNodes, m_listNodes.size() + 1);
+    Node *node = new Node(m_sizeNodes, m_borderWidthNodes,
+                          m_fontNodes, m_listNodes.size() + 1);
 
-	// Перед добавлением нового итема в лист делаем перерисовку всех итомов,
-	// т.к. мог измениться размер шрифта для индексов итемов.
-	foreach (Node *node, m_listNodes) {
-		node->update();
-	}
+    // Перед добавлением нового итема в лист делаем перерисовку всех итомов,
+    // т.к. мог измениться размер шрифта для индексов итемов.
+    update();
+    //Добавляем вершину в список
+    m_listNodes.append(node);
+    node->setPos(point);
 
-	m_listNodes.append(node);
-	node->setPos(point);
+    //Добавляем на сцену
+    QGraphicsScene::addItem(node);
 
-	QGraphicsScene::addItem(node);
-
-	return node->index();
+    return true;
 }
 
 bool GraphScene::removeNode(Node *node)
@@ -70,6 +64,7 @@ bool GraphScene::removeNode(Node *node)
 	if (!node)
 		return false;
 
+    //Удаление всех инцидентных ребер
 	foreach (Arc *arc, node->listArc()) {
 		arc->node1() == node ? arc->node2()->removeArc(arc) :
 							   arc->node1()->removeArc(arc);
@@ -77,6 +72,7 @@ bool GraphScene::removeNode(Node *node)
 		m_listArcs.removeOne(arc);
 		delete arc;
 	}
+    //Удаление вершины со сцены
 	QGraphicsScene::removeItem(node);
 	m_listNodes.removeOne(node);
 
@@ -88,11 +84,11 @@ bool GraphScene::removeNode(Node *node)
         m_listNodes.last()->refreshFont();
 		// Перерисовываем всем итемы, т.к. индексы изменились,
 		// и, возможно, изменился размер шрифта.
-		foreach (Node *node, m_listNodes) {
-			node->update();
-		}
+        update();
+
 	}
 
+    //Отчщение памяти
 	delete node;
 
 	return true;
@@ -100,28 +96,28 @@ bool GraphScene::removeNode(Node *node)
 
 bool GraphScene::setSizeNodes(const QSize &size)
 {
-	if (size.width() < 0 || size.height() < 0)
-		return false;
+    if (size.width() < 0 || size.height() < 0)
+        return false;
 
-	m_sizeNodes = size;
-	// Т.к. были изменены размеры узлов, изменяем положение линий.
-	foreach (Arc *arc, m_listArcs) {
-		arc->setLine(QLineF(arc->node1()->center(), arc->node2()->center()));
-	}
-	if (!m_listNodes.isEmpty()) m_listNodes.last()->refreshFont();
-	update();
+    m_sizeNodes = size;
+    // Т.к. были изменены размеры узлов, изменяем положение линий.
+    foreach (Arc *arc, m_listArcs) {
+        arc->setLine(QLineF(arc->node1()->center(), arc->node2()->center()));
+    }
+    if (!m_listNodes.isEmpty()) m_listNodes.last()->refreshFont();
+    update();
 
-	return true;
+    return true;
 }
 
-bool GraphScene::setWidthLineNodes(qint32 width)
+bool GraphScene::setBorderWidthNodes(qint32 width)
 {
-	if (width < 1)
-		return false;
+    if (width < 1)
+        return false;
 
-	m_widthLineNodes = width;
-	update();
-	return true;
+    m_borderWidthNodes = width;
+    update();
+    return true;
 }
 
 bool GraphScene::moveNode(Node *node, qint32 xBy, qint32 yBy)
@@ -129,11 +125,14 @@ bool GraphScene::moveNode(Node *node, qint32 xBy, qint32 yBy)
 	if (!node)
 		return false;
 
+    //Задаем новую позицию вершине
 	node->moveBy(xBy, yBy);
-
+    //Обновляем все ребра
 	foreach (Arc *arc, node->listArc()) {
-		arc->node1() == node ? arc->setLine(QLineF(node->center(), arc->node2()->center())):
-							   arc->setLine(QLineF(arc->node1()->center(), node->center()));
+        arc->node1() == node ? arc->setLine(QLineF(node->center(),
+                                                   arc->node2()->center())):
+                               arc->setLine(QLineF(arc->node1()->center(),
+                                                   node->center()));
 	}
 	update();
 	return true;
@@ -154,18 +153,21 @@ Node *GraphScene::nodeOnPos(QPoint point) const
 bool GraphScene::addArc(Node *node1, Node *node2)
 {
     bool ok;
-    qint32 weight = QInputDialog::getInt(nullptr,"Вес дуги","Введите вес (1-500):",1,1,500,1,&ok);
+    qint32 weight = QInputDialog::getInt(nullptr,
+                                         "Weight: ","Enter weight (1-999):",
+                                         1,1,999,1,
+                                         &ok);
     if(!ok)
         return false;
     if (!node1 || !node2)
         return false;
 
-    // Проверка на "Существование ребра между двумя вершинами, проверка веса найденного ребра".
+    // Проверка на "Существование ребра между двумя вершинами,
+    // проверка веса найденного ребра".
     Arc* arc = getArc(node1,node2);
     if(arc != nullptr){
         if(arc->weight() != weight){
-            setArcWeight(arc,weight);
-            return false;
+            return setArcWeight(arc,weight);
         }
     }
     //Если связь не найена, то создаем новую
@@ -177,55 +179,37 @@ bool GraphScene::addArc(Node *node1, Node *node2, qint32 weight)
     if (!node1 || !node2)
         return false;
 
-    if(getArc(node1,node2) != nullptr)
+    if(getArc(node1,node2) != nullptr){
         return false;
-//	// Проверка на "существует ли линия между этими узлами".
-//	foreach (Arc *arc, node1->listArc()) {
-//		if ((arc->node1() == node1 && arc->node2() == node2) ||
-//				(arc->node1() == node2 && arc->node2() == node1)) {
-//            if(arc->weight() != weight)
+    }else{
 
-//			return false;
-//		}
-//	}
+        QGraphicsScene::removeItem(node1);
+        QGraphicsScene::removeItem(node2);
 
-	Node *newNode_1 = new Node(*node1);
-	Node *newNode_2 = new Node(*node2);
+        Arc *arc = new Arc(node1,
+                           node2,
+                           m_lineWidthArcs,
+                           m_fontWeightArcs,
+                           m_borderWidthWeightArcs,
+                           weight);
+        m_listArcs.append(arc);
+        node1->addArc(arc);
+        node2->addArc(arc);
 
-	m_listNodes.last()->refreshFont();
 
-	m_listNodes.insert(node1->index() - 1, newNode_1);
-	m_listNodes.removeOne(node1);
-	m_listNodes.insert(node2->index() - 1, newNode_2);
-	m_listNodes.removeOne(node2);
+        QGraphicsScene::addItem(arc);
+        QGraphicsScene::addItem(node1);
+        QGraphicsScene::addItem(node2);
 
-	QGraphicsScene::removeItem(node1);
-	QGraphicsScene::removeItem(node2);
-	delete node1;
-	delete node2;
+        update();
 
-	Arc *arc = new Arc(newNode_1,
-					   newNode_2,
-					   m_widthLineArcs,
-					   m_fontWeightArcs,
-					   m_widthLineWeightArcs,
-					   weight);
-	m_listArcs.append(arc);
-	newNode_1->addArc(arc);
-	newNode_2->addArc(arc);
-
-	update();
-
-	QGraphicsScene::addItem(arc);
-	QGraphicsScene::addItem(newNode_1);
-	QGraphicsScene::addItem(newNode_2);
-
-	return true;
+        return true;
+    }
 }
 
 bool GraphScene::setArcWeight(Node *node1, Node *node2, qint32 weight)
 {
-    // Поиск нужной линии.
+    // Поиск нужного ребра.
     Arc *arc = getArc(node1,node2);
     if(arc != nullptr){
 
@@ -241,20 +225,8 @@ bool GraphScene::setArcWeight(Arc* arc, qint32 weight){
     return true;
 }
 
-
 bool GraphScene::removeArc(Node *node1, Node *node2)
 {
-//    foreach (Arc *arc, node1->listArc()) {
-//        if ((arc->node1() == node1 && arc->node2() == node2) ||
-//                (arc->node1() == node2 && arc->node2() == node1)) {
-//            node1->removeArc(arc);
-//            node2->removeArc(arc);
-//            QGraphicsScene::removeItem(arc);
-//            m_listArcs.removeOne(arc);
-//            delete arc;
-//            return true;
-//        }
-//    }
     Arc* arc = getArc(node1,node2);
     if(arc != nullptr){
         node1->removeArc(arc);
@@ -267,12 +239,12 @@ bool GraphScene::removeArc(Node *node1, Node *node2)
 	return false;
 }
 
-bool GraphScene::setWidthLineArcs(qint32 width)
+bool GraphScene::setBorderWidthArcs(qint32 width)
 {
 	if (width < 1)
 		return false;
 
-	m_widthLineArcs = width;
+    m_lineWidthArcs = width;
 	foreach (Arc *arc, m_listArcs) {
 		arc->setPen(QPen(QColor(0, 0, 0), width));
 	}
@@ -291,13 +263,12 @@ Arc *GraphScene::getArc(Node *node1, Node *node2)
     return nullptr;
 }
 
-
-
 // ******************** WEIGHT ********************
 bool GraphScene::setSizeWeightArcs(qint32 pointSize)
 {
 	if (pointSize <= 0)
 		return false;
+
 
 	m_fontWeightArcs.setPointSize(pointSize);
 	foreach (Arc *arc, m_listArcs) {
@@ -316,12 +287,12 @@ void GraphScene::setFontWeightArc(QFont font)
 	update();
 }
 
-bool GraphScene::setWidthLineWeightArcs(qint32 width)
+bool GraphScene::setBorderWidthWeightArcs(qint32 width)
 {
 	if (width < 1)
 		return false;
 
-	m_widthLineWeightArcs = width;
+    m_borderWidthWeightArcs = width;
 	update();
 	return true;
 }

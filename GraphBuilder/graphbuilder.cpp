@@ -5,40 +5,129 @@
 
 #include <QDebug>
 #include <QThread>
+#include <QtMath>
 
 GraphBuilder::GraphBuilder(Graph &graph,QObject *parent)
     : QObject(parent)
 {
     m_graph = &graph;
-
 }
 
-void GraphBuilder::buildGraph(qint32 countNode, qint32 graphComplexity)
+void GraphBuilder::buildGraph(qint32 countNodes)
 {
-    _init_graphTable(countNode);
-    fillGraphTable(countNode,graphComplexity);
-}
+    if(countNodes <= 0) return;
 
-void GraphBuilder::buildMCStree()
-{
+    //Создание матрицы смежности, по которой будет заполняться граф
+    qint32 **graphMatrix = new qint32*[static_cast<quint32>(countNodes)];
+    for(qint32 i = 0; i < countNodes; i++){
+        graphMatrix[i] = new qint32[static_cast<quint32>(countNodes)];
+        for(qint32 j = 0; j < countNodes; j++){
+            if(i == j) graphMatrix[i][j] = 0;
+            else graphMatrix[i][j] = this->rand();
+        }
+    }
 
+    //Отчищаем поле
+    m_graph->clearAll();
+
+    //Добавление вершин на поле
+    if(countNodes == 1){
+        m_graph->addNode(QPoint(m_graph->width() / 2,
+                                m_graph->height()/2));
+    }
+
+    else if(countNodes == 2){
+        m_graph->addNode(QPoint(m_graph->width() / 2,
+                                m_graph->height() / 2 - 70));
+        m_graph->addNode(QPoint(m_graph->width() / 2,
+                                m_graph->height() / 2 + 70));
+    }
+
+    else if(countNodes == 3){
+        m_graph->addNode(QPoint(m_graph->width() / 2,
+                                m_graph->height() / 2 - 70));
+        m_graph->addNode(QPoint(m_graph->width() / 2 - 70,
+                                m_graph->height() / 2 + 70));
+        m_graph->addNode(QPoint(m_graph->width() / 2 + 70,
+                                m_graph->height() / 2 + 70));
+    }
+
+    //Круговое добавление
+    else if(countNodes % 2 == 0){
+        qint32 _centerX = m_graph->width() / 2;
+        qint32 _centerY = m_graph->height() / 2;
+        //Количество радиан между вершинами
+        double k = (360.0 / (countNodes))*M_PI/180;
+        qint32 radius = 30;
+
+        for(qint32 i = 0; i < countNodes; i++){
+            double  pointY  = _centerY + (sin(k*i) * ((countNodes)*radius));
+            double  pointX  = _centerX + (cos(k*i) * ((countNodes)*radius));
+
+            m_graph->addNode(QPoint(static_cast<qint32>(pointX),
+                                    static_cast<qint32>(pointY))
+                             );
+        }
+    }
+    else {
+        qint32 _centerX = m_graph->width() / 2;
+        qint32 _centerY = m_graph->height() / 2;
+        //Количество радиан между вершинами
+        double k = (360.0 / (countNodes - 1))*M_PI/180;
+        qint32 radius = 30;
+
+        for(qint32 i = 0; i < countNodes - 1; i++){
+            double  pointY  = _centerY + (sin(k*i) * ((countNodes-1)*radius));
+            double  pointX  = _centerX + (cos(k*i) * ((countNodes-1)*radius));
+
+            m_graph->addNode(QPoint(static_cast<qint32>(pointX),
+                                    static_cast<qint32>(pointY))
+                             );
+        }
+        m_graph->addNode(QPoint(_centerX,
+                                _centerY)
+                         );
+    }
+    //Создание ребер по матрице
+    for(qint32 i = 0; i < m_graph->listNode().length(); i++){
+        for(qint32 j = 0; j < m_graph->listNode().length(); j++){
+            Node *node1 = m_graph->listNode()[i];
+            Node *node2 = m_graph->listNode()[j];
+            if(m_graph->listNode()[i] == m_graph->listNode()[j]) {continue;}
+            m_graph->addArc(node1,node2, graphMatrix[i][j]);
+        }
+    }
+    //Удаление матрицы
+    for(int i = 0; i < countNodes; i++){
+        delete [] graphMatrix[i];
+    }
+    delete [] graphMatrix;
+    //Обновление поля после создания графа
+    m_graph->update();
 }
 
 GraphBuilder::State GraphBuilder::getSate()
 {
     return m_state;
-    _init_graphTable(m_graph->listNode().length());
-    fillGraphTable();
-    printGraphTable(m_graph->listNode().length());
-    clearGraphTable(m_graph->listNode().length());
 }
 
-void GraphBuilder::start(){
-    buildMCStree();
+void GraphBuilder::start()
+{
+    //Провека(не является ли поле пустым)
+    if(m_graph->listArc().size() < 1)
+        return;
+    //Запуск поиска в отдельном потоке
+    QThread::create(drawMSTree,this)->start();
 }
 
 void GraphBuilder::play()
 {
+    //Запуск поиска дерева
+    if(m_state == State::None)
+    {
+        m_state = State::Build;
+        start();
+    }
     m_state = State::Build;
 }
 
@@ -46,471 +135,296 @@ void GraphBuilder::pause(){
     m_state = State::Pause;
 }
 
-void GraphBuilder::reset(){}
+void GraphBuilder::reset(){
+    if(m_state == State::Build || m_state == State::Pause){
+        m_state = State::Reset;
+    }
+    else
+    {
+        foreach(Arc *arc,m_graph->listArc()){
+            arc->setColor(QColor{0,0,0,255});
+            arc->setBrushWeight(QColor(255,255,255,255));
+        }
+        foreach(Node *node, m_graph->listNode()){
+            node->setColor(QColor{0,0,0,255});
+        }
+        m_graph->update();
+    }
+
+}
 
 void GraphBuilder::setSpeed(qint32 speed)
 {
     m_speed = speed;
 }
 
-void GraphBuilder::_init_graphTable(qint32 count)
+qint32 GraphBuilder::rand()
 {
-    m_graphTable = new qint32*[count];
-    for(qint32 i = 0; i < count; i++){
-        m_graphTable[i] = new qint32[count];
-    }
+     //Генерирует число от 1 до 999
 
-    for(qint32 i = 0; i < count; i++)
-        for(qint32 j = 0; j < count; j++){
-            m_graphTable[i][j] = 0;
-        }
+     qint32 n = qrand();
+     if(n == 0)
+         return this->rand();
+     if(n > 999)
+         n = n / 100;
+     return n;
 }
 
-void GraphBuilder::fillGraphTable(qint32 count,qint32 complexity)
-{
-
-    if(complexity == 1){
-        for(qint32 i = 0; i < count - 1; i++){
-            for(qint32 j = i + 1; j < count; j++){
-
-            }
-        }
-    }
-
-    if(complexity == 2){
-        for(qint32 i = 0; i < count - 1; i++){
-            for(qint32 j = i + 1; j < count; j++){
-
-            }
-        }
-    }
-
-    if(complexity == 3){
-        for(qint32 i = 0; i < count - 1; i++){
-            for(qint32 j = i + 1; j < count; j++){
-
-            }
-        }
-    }
-
-    if(complexity == 4){
-        for(qint32 i = 0; i < count - 1; i++){
-            for(qint32 j = i + 1; j < count; j++){
-
-            }
-        }
-    }
-}
-
-void GraphBuilder::fillGraphTable()
-{
-    QList<Node*> nodes = m_graph->listNode();
-    QList<Arc*> arcs = m_graph->listArc();
-
-    foreach (Node* node, nodes) {
-        QList<Arc*> nodeArcs  = node->listArc();
-        foreach(Arc* arc, nodeArcs){
-            if(node != arc->node1()){
-                qint32 indexOfNode1 = nodes.indexOf(node);
-                qint32 indexOfNode2 = nodes.indexOf(arc->node1());
-
-                m_graphTable[indexOfNode1][indexOfNode2] = arc->weight();
-                m_graphTable[indexOfNode2][indexOfNode1] = arc->weight();
-            }
-            else if(node != arc->node2()){
-                qint32 indexOfNode1 = nodes.indexOf(node);
-                qint32 indexOfNode2 = nodes.indexOf(arc->node2());
-
-                m_graphTable[indexOfNode1][indexOfNode2] = arc->weight();
-                m_graphTable[indexOfNode2][indexOfNode1] = arc->weight();
-            }
-        }
-    }
-}
-
-void GraphBuilder::drawMCStree()
-{
-//    QList<Node*> _nodes = m_graph->listNode();
-//    QList<Arc*> _arcs = m_graph->listArc();
-
-//    qint32 **graphMatrix = new qint32*[_nodes.length()];
-//    for(qint32 i = 0; i < _nodes.length(); i++){
-//        graphMatrix[i] = new qint32[_nodes.length()];
-//        for(qint32 j = 0; j < _nodes.length(); j++){
-//            graphMatrix[i][j] = 0;
-//        }
-//    }
-
-//    foreach (Node* node, _nodes) {
-//        QList<Arc*> nodeArcs  = node->listArc();
-//        foreach(Arc* arc, nodeArcs){
-//            if(node != arc->node1()){
-//                qint32 indexOfNode1 = _nodes.indexOf(node);
-//                qint32 indexOfNode2 = _nodes.indexOf(arc->node1());
-
-//                graphMatrix[indexOfNode1][indexOfNode2] = arc->weight();
-//                graphMatrix[indexOfNode2][indexOfNode1] = arc->weight();
-//            }
-//            else if(node != arc->node2()){
-//                qint32 indexOfNode1 = _nodes.indexOf(node);
-//                qint32 indexOfNode2 = _nodes.indexOf(arc->node2());
-
-//                graphMatrix[indexOfNode1][indexOfNode2] = arc->weight();
-//                graphMatrix[indexOfNode2][indexOfNode1] = arc->weight();
-//            }
-//        }
-//    }
-
-//    QVector<Node*> nodes;
-//    QVector<Arc*>  arcs;
-
-//    m_state = State::Build;
-
-//    foreach(Node* node, m_graph->listNode()){
-//        nodes.push_back(node);
-//    }
-//    foreach(Arc* arc, m_graph->listArc()){
-//        arcs.push_back(arc);
-//    }
-
-//    bool* nodesInTree = new bool[m_graph->listNode().length()];
-//    for(int i = 0; i < m_graph->listNode().length(); i++){
-//        if(i == 0)
-//            nodesInTree[i] = true;
-//        else
-//            nodesInTree[i] = false;
-//    }
-
-//    //удаляем все ребра
-//    foreach(Arc *arc, arcs){
-//        arc->setColor(m_inactiveColor);
-//    }
-
-//    //Инициализируем переменные, нужные для постройки дерева
-//    bool   complited = false;
-
-//    QList<Node*> _nodesInTree;
-//    _nodesInTree.append(nodes[0]);
-//    QList<Arc*>  arcInTree;
-
-//    Arc* arcOnStep = nullptr;
-//    Node* nodeOnStep = nullptr;
-
-//    qint32 indexNode1 = 0;
-//    qint32 indexNode2 = 0;
-//    Arc* minArc = nullptr;
-
-//    qint32 count = 1;
-
-//    //(QGraphBuilder *graph, Graph *graph, QList<Node*> &_nodesInTree, QList<Arc*> &_arcInTree, bool* nodesInTree, bool &complited)
-//    while(complited == false){
-//        if(m_state == State::Build){ //Строим деревe
-//            if(indexNode1 < _nodesInTree.size()){
-//                nodeOnStep = nodes[indexNode1];
-//                if(indexNode2 < nodes.size()){
-//                    if(graphMatrix[indexNode1][indexNode2] > 0)
-//                    {
-//                        if(minArc == nullptr) {
-//                            if(!nodesInTree[indexNode1] || !nodesInTree[indexNode2]){
-//                                minArc = m_graph->getArc(nodes[indexNode1],nodes[indexNode2]);
-//                                arcOnStep = minArc;
-//                            }
-//                        }
-//                        else {
-//                            arcOnStep = m_graph->getArc(nodes[indexNode1],nodes[indexNode2]);
-//                            if(minArc->weight() > graphMatrix[indexNode1][indexNode2]){
-//                                qDebug() << "Index1 " << nodesInTree[indexNode1];
-//                                qDebug() << "Index2 " << nodesInTree[indexNode2];
-//                                if((nodesInTree[indexNode1] && !nodesInTree[indexNode2]) ||
-//                                   (!nodesInTree[indexNode1] && nodesInTree[indexNode2])){
-//                                    minArc = m_graph->getArc(nodes[indexNode1],nodes[indexNode2]);
-//                                }
-//                        }
-//                        }
-//                    }
-//                    indexNode2++;
-//                }
-//                else{
-//                    ++indexNode1;
-//                    indexNode2 = 0;
-//                }
-//            } else if(minArc != nullptr){
-//                minArc->setColor(m_MCSTreeColor);
-//                Node *node1 = minArc->node1();
-//                Node *node2 = minArc->node2();
-//                qint32 index1 = nodes.indexOf(node1);
-//                qint32 index2 = nodes.indexOf(node2);
-//                arcInTree.append(minArc);
-//                if(!nodesInTree[index1]){
-//                    nodesInTree[index1] = true;
-//                   _nodesInTree.append(node1);
-//                   count++;
-//                }
-//                if(!nodesInTree[index2]){
-//                    nodesInTree[index2] = true;
-//                    _nodesInTree.append(node2);
-//                    count++;
-//                }
-//                minArc = nullptr;
-//                indexNode1 = 0;
-//                indexNode2 = 0;
-//            }
-
-//            if(count == nodes.length())
-//                complited = true;
-
-//            updateMCStree(m_graph,_nodesInTree,arcInTree,nodeOnStep,arcOnStep, minArc);
-//        }
-//        else if(m_state == State::Pause){ //Пропускаем итерацию
-//            continue;
-//        }
-//        else if(m_state == State::Reset){ //Сбрасываем
-//            foreach(Arc *arc,m_graph->listArc()){
-//                arc->setColor(m_defaultColor);
-//            }
-//            foreach(Node *node, m_graph->listNode()){
-//                node->setColor(m_defaultColor);
-//            }
-//            delete[] nodesInTree;
-//            break;
-//        }
-//        QThread::msleep(100);
-
-//    }
-
-//    for(int i = 0; i < count; i++){
-//        delete [] graphMatrix[i];
-//    }
-//    delete [] graphMatrix;
-//    updateMCStree(m_graph,_nodesInTree,arcInTree,nullptr,nullptr, nullptr);
-//    emit buildingCompleted();
-}
-
-void GraphBuilder::clearGraphTable(qint32 count)
-{
-    for(int i = 0; i < count; i++){
-        delete [] m_graphTable[i];
-    }
-    delete [] m_graphTable;
-}
-
-void GraphBuilder::updateMCStree(Graph *graph,
+void GraphBuilder::updateColors(Graph *graph,
                                  QList<Node *> nodesInTree,
                                  QList<Arc *> arcsInTree,
-                                 Node* nodeOnStep,
-                                 Arc *arcOnStep,
-                                 Arc *minArc)
+                                 QList<Arc *> arcsForCheck,
+                                 Arc *arcAtStep,
+                                 Arc *minArc,
+                                 Node *nodeAtStepOfFilling,
+                                 Arc *arcAtStepOfFilling)
 {
-    QList<Node*> nodes = graph->listNode();
-    QList<Arc*>  arcs  = graph->listArc();
 
-    foreach(Node* item, nodes){
+    foreach(Node* item, graph->listNode()){
         item->setColor(QColor(0,0,0,255));
     }
-    foreach(Arc* item, arcs){
-        item->setColor(QColor(196, 196, 196));
+
+    if(!nodesInTree.isEmpty()){
+        foreach(Arc* item, graph->listArc()){
+            item->setColor(QColor(196, 196, 196,30));
+            item->setBrushWeight(QColor(196, 196, 196,30));
+        }
     }
-
-    if(minArc != nullptr) minArc->setColor(QColor(0, 227, 68,255));
-
-    if(arcsInTree.size() > 0){
-        foreach(Arc* item, arcsInTree){
-            item->setColor(QColor(52, 119, 235,255));
+    else{
+        foreach(Arc* item, graph->listArc()){
+            item->setColor(QColor(0, 0, 0,255));
+            item->setBrushWeight(QColor(255, 255, 255 ,255));
         }
     }
 
-    if(nodesInTree.size() > 0){
+
+    if(!nodesInTree.isEmpty()){
         foreach(Node* item, nodesInTree){
             item->setColor(QColor(52, 119, 235,255));
         }
     }
 
-    if(arcOnStep != nullptr) arcOnStep->setColor(QColor(255, 56, 38,255));
-    if(nodeOnStep != nullptr)nodeOnStep->setColor(QColor(245, 236, 66 ,255));
-    graph->update();
+    if(!arcsInTree.isEmpty()){
+        foreach(Arc* item, arcsInTree){
+            item->setColor(QColor(52, 119, 235,255));
+            item->setBrushWeight(QColor(255, 255, 255,255));
+        }
+    }
+
+    if(!arcsForCheck.isEmpty()){
+        foreach(Arc* item, arcsForCheck){
+            item->setColor(QColor(248, 255, 145,255));
+            item->setBrushWeight(QColor(255, 255, 255,90));
+        }
+    }
+
+    if(minArc != nullptr) {
+        minArc->setColor(QColor(0, 227, 68,255));
+        minArc->setBrushWeight(QColor(255,255,255,255));
+    }
+
+    if(arcAtStep != nullptr) {
+        arcAtStep->setColor(QColor(255, 56, 38,255));
+        arcAtStep->setBrushWeight(QColor(255,255,255,255));
+    }
+
+    if(arcAtStepOfFilling){
+        arcAtStepOfFilling->setColor(QColor(133, 38, 171,255));
+        arcAtStepOfFilling->setBrushWeight(QColor(255,255,255,255));
+    }
+    if(nodeAtStepOfFilling){
+        nodeAtStepOfFilling->setColor(QColor(133, 38, 171,255));
+    }
+
 }
 
-void GraphBuilder::drawMCSTree(GraphBuilder *graphBuilder,
-                               Graph *graph
-/*                               QList<Node *>&_nodesInTree,
-                               QList<Arc *>&_arcInTree,
-                               qint32 **graphMatrix,
-                               bool *nodesInTree,
-                               bool &complited*/)
+void GraphBuilder::drawMSTree(GraphBuilder *graphBuilder)
 {
-    QList<Node*> _nodes = graph->listNode();
-    QList<Arc*> _arcs = graph->listArc();
-
-    qint32 **graphMatrix = new qint32*[_nodes.length()];
-    for(qint32 i = 0; i < _nodes.length(); i++){
-        graphMatrix[i] = new qint32[_nodes.length()];
-        for(qint32 j = 0; j < _nodes.length(); j++){
-            graphMatrix[i][j] = 0;
-        }
-    }
-
-    foreach (Node* node, _nodes) {
-        QList<Arc*> nodeArcs  = node->listArc();
-        foreach(Arc* arc, nodeArcs){
-            if(node != arc->node1()){
-                qint32 indexOfNode1 = _nodes.indexOf(node);
-                qint32 indexOfNode2 = _nodes.indexOf(arc->node1());
-
-                graphMatrix[indexOfNode1][indexOfNode2] = arc->weight();
-                graphMatrix[indexOfNode2][indexOfNode1] = arc->weight();
-            }
-            else if(node != arc->node2()){
-                qint32 indexOfNode1 = _nodes.indexOf(node);
-                qint32 indexOfNode2 = _nodes.indexOf(arc->node2());
-
-                graphMatrix[indexOfNode1][indexOfNode2] = arc->weight();
-                graphMatrix[indexOfNode2][indexOfNode1] = arc->weight();
-            }
-        }
-    }
-
-    QVector<Node*> nodes;
-    QVector<Arc*>  arcs;
-
-    graphBuilder->play();
-
-    foreach(Node* node, graph->listNode()){
-        nodes.push_back(node);
-    }
-    foreach(Arc* arc, graph->listArc()){
-        arcs.push_back(arc);
-    }
-
-    bool* nodesInTree = new bool[graph->listNode().length()];
-    for(int i = 0; i < graph->listNode().length(); i++){
-        if(i == 0)
-            nodesInTree[i] = true;
-        else
-            nodesInTree[i] = false;
-    }
-
-    //удаляем все ребра
-    foreach(Arc *arc, arcs){
-        arc->setColor(QColor(196, 196, 196));
-    }
-
     //Инициализируем переменные, нужные для постройки дерева
+
+    //Флаг завершенности поиска дерева
     bool   complited = false;
+    //Вершины в дереве
+    QList<Node*> nodesInTree;
+    //Ребра в дереве
+    QList<Arc*> arcsInTree;
+    //Множество ребер для поиска минимального (разрез)
+    QList<Arc*> cut;
 
-    QList<Node*> _nodesInTree;
-    _nodesInTree.append(nodes[0]);
-    QList<Arc*>  arcInTree;
-
-    Arc* arcOnStep = nullptr;
-    Node* nodeOnStep = nullptr;
-
-    qint32 indexNode1 = 0;
-    qint32 indexNode2 = 0;
+    //Ребро на этапе поиска минимального
+    Arc* arcAtStep = nullptr;
+    //Возможное минимальное ребро
     Arc* minArc = nullptr;
 
-    qint32 count = 1;
+    //Ребро на этапе заполнения множества ребер для поиска минимального
+    Arc*  arcAtStepOfFilling  = nullptr;
+    //Вершина на этапе заполнения множества ребер для поиска минимального
+    Node* nodeAtStep = nullptr;
 
-    //(QGraphBuilder *graph, Graph *graph, QList<Node*> &_nodesInTree, QList<Arc*> &_arcInTree, bool* nodesInTree, bool &complited)
+    //Флаг "Формирование разреза"
+    bool cutMode = true;
+    //Флаг "Поиск минимального ребра"
+    bool searchMode   = false;
+
+    //Индекс текущего ребра
+    qint32 indexArc =  0;
+
+    //Иницализация множества вершин в дереве
+    //Добавление вершины index = 0 в дерево в качестве корня
+    nodesInTree.append(graphBuilder->m_graph->listNode()[0]);
+
     while(complited == false){
-        if(graphBuilder->getSate() == State::Build) qDebug() << "build";
-        if(graphBuilder->getSate() == State::Pause) qDebug() << "pause";
-        if(graphBuilder->getSate() == State::Reset) qDebug() << "resete";
-        ////////////////////////////////////////////////////////////////////
         if(graphBuilder->getSate() == State::Build){ //Строим деревe
-            if(indexNode1 < _nodesInTree.size()){
-                nodeOnStep =  _nodesInTree[indexNode1];
-                if(indexNode2 < nodes.size()){
-                    if(graphMatrix[indexNode1][indexNode2] > 0)
-                    {
-                        if(minArc == nullptr) {
-                            if(!nodesInTree[nodes.indexOf(_nodesInTree[indexNode1])] || !nodesInTree[indexNode2]){
-                                minArc = graph->getArc(_nodesInTree[indexNode1],nodes[indexNode2]);
-                                arcOnStep = minArc;
-                            }
+            if(arcsInTree.size() < graphBuilder->
+                    m_graph->listNode().size()-1)
+            {
+                if(searchMode) //Поиск минимального ребра
+                {
+                    //Провека(не все ли ребра в множестве проверены)
+                    if(indexArc < cut.size()){
+                        //Ребро на текущем шаге
+                        arcAtStep = cut[indexArc];
+                        //если минимальное ребро отсутсвоет,
+                        //то присваивается ему текущее
+                        if(minArc == nullptr){
+                            minArc = arcAtStep;
                         }
                         else {
-                            arcOnStep = graph->getArc(_nodesInTree[indexNode1],nodes[indexNode2]);
-                            if(minArc->weight() > graphMatrix[indexNode1][indexNode2]){
-//                                qDebug() << "Index1 " << nodesInTree[indexNode1];
-//                                qDebug() << "Index2 " << nodesInTree[indexNode2];
-                                if((nodesInTree[indexNode1] && !nodesInTree[indexNode2]) ||
-                                   (!nodesInTree[indexNode1] && nodesInTree[indexNode2])){
-                                    minArc = graph->getArc(_nodesInTree[indexNode1],nodes[indexNode2]);
-                                }
+                            //Если вес текущего ребра меньше минимального
+                            //То в минимальное ребро записывается текущее
+                            if(minArc->weight() > arcAtStep->weight()){
+                                minArc = arcAtStep;
+                            }
                         }
+                        indexArc++;
+                    }
+                    else{
+                        if(minArc){
+                            //удаляем ребро из множества
+                            cut.removeOne(minArc);
+                            //Добавляем ребро в дерево
+                            arcsInTree.append(minArc);
+
+                           //Проверяются инцидентные вершины минимального
+                           // ребра
+
+                            //Первая вершина
+                           if(nodesInTree.indexOf(minArc->node1())
+                                   == -1){
+                               Node* node = minArc->node1();
+                               nodesInTree.append(node);
+                           }
+                           //Вторая вершина
+                           else if(nodesInTree.indexOf(minArc->node2())
+                                   == -1){
+                               Node* node = minArc->node2();
+                               nodesInTree.append(node);
+                           }
+
+                           //Смена режима
+                           //В качестве вершины для заполнения множества
+                           //ребер, берется только-что добавленная
+                           //вершина (последния)
+                           nodeAtStep= nodesInTree.last();
+                           minArc = nullptr;
+                           cutMode = true;
+                           arcAtStep = nullptr;
+                           searchMode = false;
+                           indexArc = 0;
                         }
                     }
-                    indexNode2++;
                 }
-                else{
-                    ++indexNode1;
-                    indexNode2 = 0;
+                else if(cutMode) //Заполнение разреза
+                    {
+                        //Вершина на данном шаге
+                        nodeAtStep = nodesInTree.last();
+                        if(indexArc < nodeAtStep->listArc().size()){
+                            //Получение ребро на данном шаге
+                            arcAtStepOfFilling =
+                                    nodeAtStep->listArc()[indexArc];
+                            //Поверка(не находится ли смежное ребро в дереве)
+                            if(nodesInTree.indexOf(
+                                        nodeAtStep->
+                                        adjacentNode(arcAtStepOfFilling))==-1)
+                            {
+                                cut.append(arcAtStepOfFilling);
+                            }
+                            //Проверка(входит ли текущее ребро в разрез
+                            else if(cut.indexOf(arcAtStepOfFilling)
+                                    != -1)
+                            {
+                                cut.removeOne(arcAtStepOfFilling);
+                            }
+                            indexArc++;
+                        }
+                    else{
+                        //Смена режима
+                        arcAtStepOfFilling  = nullptr;
+                        nodeAtStep= nullptr;
+                        cutMode = false;
+                        searchMode = true;
+                        indexArc = 0;
+                    }
                 }
-            } else if(minArc != nullptr){
-                minArc->setColor(QColor(52, 119, 235,255));
-                Node *node1 = minArc->node1();
-                Node *node2 = minArc->node2();
-                qint32 index1 = nodes.indexOf(node1);
-                qint32 index2 = nodes.indexOf(node2);
-                arcInTree.append(minArc);
-                if(!nodesInTree[index1]){
-                    nodesInTree[index1] = true;
-                   _nodesInTree.append(node1);
-                   count++;
-                }
-                if(!nodesInTree[index2]){
-                    nodesInTree[index2] = true;
-                    _nodesInTree.append(node2);
-                    count++;
-                }
-                minArc = nullptr;
-                indexNode1 = 0;
-                indexNode2 = 0;
             }
+            else
+            {
 
-            if(count == nodes.length())
+                //Завершение поиска
                 complited = true;
+                cut.clear();
+                arcAtStep = nullptr;
+                arcAtStepOfFilling = nullptr;
+                nodeAtStep = nullptr;
+                minArc = nullptr;
 
-            updateMCStree(graph,_nodesInTree,arcInTree,nodeOnStep,arcOnStep, minArc);
+//                updateColors(graphBuilder->m_graph,
+//                              nodesInTree,
+//                              arcsInTree,
+//                              cut,
+//                              arcAtStep,
+//                              minArc,
+//                              nodeAtStep,
+//                              arcAtStepOfFilling);
+            }
+//            //Обновляем цвета
+            updateColors(graphBuilder->m_graph,
+                          nodesInTree,
+                          arcsInTree,
+                          cut,
+                          arcAtStep,
+                          minArc,
+                          nodeAtStep,
+                          arcAtStepOfFilling);
+            //Задержка между итерациями
+            QThread::msleep(graphBuilder->msMax/graphBuilder->m_speed);
         }
-        else if(graphBuilder->getSate() == State::Pause){ //Пропускаем итерацию
+        else if(graphBuilder->getSate() == State::Pause){ //Пропуск итерации
             continue;
         }
-        else if(graphBuilder->getSate() == State::Reset){ //Сбрасываем
-            foreach(Arc *arc,graph->listArc()){
-                arc->setColor(QColor{0,0,0,255});
-            }
-            foreach(Node *node, graph->listNode()){
-                node->setColor(QColor{0,0,0,255});
-            }
-            delete[] nodesInTree;
-            break;
+        else if(graphBuilder->getSate() == State::Reset){
+            //Сброс до начального состояния
+            nodesInTree.clear();
+            arcsInTree.clear();
+            cut.clear();
+            complited = true;
+            graphBuilder->reset();
         }
-        QThread::msleep(300);
+        graphBuilder->m_graph->update();
+        //graph->update();
+    }
 
+    //Установка текущего состояние в None
+    graphBuilder->m_state = State::None;
+    qint32 sum = 0;
+    //Нахождение веса получившегося дерева
+    foreach(Arc* arc, arcsInTree){
+        sum += arc->weight();
     }
-    for(int i = 0; i < count; i++){
-        delete [] graphMatrix[i];
-    }
-    delete [] graphMatrix;
-    updateMCStree(graph,_nodesInTree,arcInTree,nullptr,nullptr, nullptr);
-    //emit buildingCompleted();
+    //отправка сигнала о завершении поиска. Отправка веса
+    emit graphBuilder->buildingCompleted(sum);
+    graphBuilder->m_graph->update();
 }
 
-
-void GraphBuilder::printGraphTable(qint32 count)
-{
-    for(int i = 0; i < count; i++){
-        for(int j = 0; j < count; j++){
-           // qDebug() << m_graphTable[i][j] << ' ';
-            Arc *arc = m_graph->getArc(m_graph->listNode()[i],m_graph->listNode()[j]);
-            if(arc != nullptr)
-                qDebug() << arc->weight();
-            else
-                qDebug() << 0;
-        }
-        qDebug() << endl;
-    }
-}
 
 
