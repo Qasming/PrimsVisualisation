@@ -26,7 +26,7 @@ public:
 public:
     State getSate();
 signals:
-    //!Сигнал о зовершении построения MSTree
+    //!Сигнал о завершении построения MSTree
     void buildingCompleted(qint32);
 public slots:
     //!Генерация графа
